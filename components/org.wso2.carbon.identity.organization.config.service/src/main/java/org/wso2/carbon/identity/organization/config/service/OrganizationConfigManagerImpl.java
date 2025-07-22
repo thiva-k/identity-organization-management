@@ -25,6 +25,7 @@ import org.wso2.carbon.identity.configuration.mgt.core.model.Resource;
 import org.wso2.carbon.identity.organization.config.service.exception.OrganizationConfigClientException;
 import org.wso2.carbon.identity.organization.config.service.exception.OrganizationConfigException;
 import org.wso2.carbon.identity.organization.config.service.internal.OrganizationConfigServiceHolder;
+import org.wso2.carbon.identity.organization.config.service.model.BrandingConfig;
 import org.wso2.carbon.identity.organization.config.service.model.ConfigProperty;
 import org.wso2.carbon.identity.organization.config.service.model.DiscoveryConfig;
 import org.wso2.carbon.identity.organization.management.service.OrganizationManager;
@@ -103,6 +104,27 @@ public class OrganizationConfigManagerImpl implements OrganizationConfigManager 
         return getDiscoveryConfiguration(getDiscoveryResource());
     }
 
+    public BrandingConfig getBrandingConfiguration() throws OrganizationConfigException {
+
+        return getBrandingConfiguration(getBrandingResource());
+
+    }
+
+    public void addBrandingConfiguration(BrandingConfig brandingConfig) throws OrganizationConfigException {
+
+        try {
+            Optional<Resource> resourceOptional = getBrandingResource();
+            Resource resource = buildResourceFromBrandingConfig(brandingConfig);
+            if (!resourceOptional.isPresent()) {
+                getConfigurationManager().addResource(RESOURCE_TYPE_NAME, resource);
+            } else {
+                getConfigurationManager().replaceResource(RESOURCE_TYPE_NAME, resource);
+            }
+        } catch (ConfigurationManagementException e) {
+            throw handleServerException(ERROR_CODE_ERROR_ADDING_DISCOVERY_CONFIG, e, getOrganizationId());
+        }
+    }
+
     @Override
     public void deleteDiscoveryConfiguration() throws OrganizationConfigException {
 
@@ -139,10 +161,37 @@ public class OrganizationConfigManagerImpl implements OrganizationConfigManager 
         return new DiscoveryConfig(configProperties);
     }
 
+    private BrandingConfig getBrandingConfiguration(Optional<Resource> resourceOptional)
+            throws OrganizationConfigException {
+
+        if (!resourceOptional.isPresent()) {
+            throw handleClientException(ERROR_CODE_DISCOVERY_CONFIG_NOT_EXIST, getOrganizationId());
+        }
+
+        List<ConfigProperty> configProperties = resourceOptional.map(resource -> resource.getAttributes().stream()
+                .map(attribute -> new ConfigProperty(attribute.getKey(), attribute.getValue()))
+                .collect(Collectors.toList())).orElse(Collections.emptyList());
+
+        return new BrandingConfig(configProperties);
+    }
+
+
     private Optional<Resource> getDiscoveryResource() throws OrganizationConfigException {
 
         try {
             return Optional.ofNullable(getConfigurationManager().getResource(RESOURCE_TYPE_NAME, RESOURCE_NAME));
+        } catch (ConfigurationManagementException e) {
+            if (!ERROR_CODE_RESOURCE_DOES_NOT_EXISTS.getCode().equals(e.getErrorCode())) {
+                throw handleServerException(ERROR_CODE_ERROR_RETRIEVING_DISCOVERY_CONFIG, e, getOrganizationId());
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional <Resource> getBrandingResource() throws OrganizationConfigException {
+
+        try {
+            return Optional.ofNullable(getConfigurationManager().getResource(RESOURCE_TYPE_NAME, "OrganizationBranding"));
         } catch (ConfigurationManagementException e) {
             if (!ERROR_CODE_RESOURCE_DOES_NOT_EXISTS.getCode().equals(e.getErrorCode())) {
                 throw handleServerException(ERROR_CODE_ERROR_RETRIEVING_DISCOVERY_CONFIG, e, getOrganizationId());
@@ -193,6 +242,17 @@ public class OrganizationConfigManagerImpl implements OrganizationConfigManager 
                 .collect(Collectors.toList());
         Resource resource = new Resource();
         resource.setResourceName(RESOURCE_NAME);
+        resource.setAttributes(resourceAttributes);
+        return resource;
+    }
+
+    private Resource buildResourceFromBrandingConfig(BrandingConfig brandingConfig) {
+        List<Attribute> resourceAttributes = brandingConfig.getConfigProperties().stream()
+                .filter(property -> property.getValue() != null && !"null".equals(property.getValue()))
+                .map(property -> new Attribute(property.getKey(), property.getValue()))
+                .collect(Collectors.toList());
+        Resource resource = new Resource();
+        resource.setResourceName("OrganizationBranding");
         resource.setAttributes(resourceAttributes);
         return resource;
     }

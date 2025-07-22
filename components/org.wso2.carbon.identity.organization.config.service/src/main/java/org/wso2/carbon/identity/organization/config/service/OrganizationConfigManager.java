@@ -19,6 +19,7 @@
 package org.wso2.carbon.identity.organization.config.service;
 
 import org.wso2.carbon.identity.organization.config.service.exception.OrganizationConfigException;
+import org.wso2.carbon.identity.organization.config.service.model.BrandingConfig;
 import org.wso2.carbon.identity.organization.config.service.model.DiscoveryConfig;
 import org.wso2.carbon.identity.organization.management.service.exception.NotImplementedException;
 
@@ -64,6 +65,12 @@ public interface OrganizationConfigManager {
      * @throws OrganizationConfigException The exception thrown when an error occurs while deleting the discovery
      *                                     configuration.
      */
+
+    BrandingConfig getBrandingConfiguration() throws OrganizationConfigException;
+
+    void addBrandingConfiguration(BrandingConfig brandingConfig) throws OrganizationConfigException ;
+
+
     void deleteDiscoveryConfiguration() throws OrganizationConfigException;
 
     /**
